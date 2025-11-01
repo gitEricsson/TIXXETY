@@ -1,7 +1,7 @@
 import pytest
 from app.services.tickets import TicketService
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class FakeEventRepo:
@@ -32,7 +32,7 @@ class FakeTicketRepo:
             user_id=user_id,
             event_id=event_id,
             status="reserved",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         self._tickets[tid] = t
         return t
@@ -48,7 +48,10 @@ class FakeDB:
     async def commit(self):
         return None
 
-    async def refresh(self, _):
+    async def refresh(self, obj):
+        # Simulate a database setting created_at if it's not already set
+        if not hasattr(obj, "created_at"):
+            obj.created_at = datetime.now(timezone.utc)
         return None
 
 

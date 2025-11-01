@@ -1,18 +1,17 @@
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TicketReserve(BaseModel):
-	user_id: int
-	event_id: int
+    user_id: int
+    event_id: int
 
 
 class TicketRead(BaseModel):
-	id: int
-	user_id: int
-	event_id: int
-	status: str
-	created_at: datetime
+    id: int
+    user_id: int
+    event_id: int
+    status: str
+    created_at: datetime
 
-	class Config:
-		from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
