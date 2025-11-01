@@ -1,12 +1,12 @@
 from __future__ import annotations
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
 from sqlalchemy import create_engine
 from alembic import context
 import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+from app.db.session import Base
 
 # Add project root to path so we can import app
 project_root = Path(__file__).parent.parent
@@ -15,10 +15,6 @@ sys.path.insert(0, str(project_root))
 # Load environment variables from .env file
 load_dotenv(project_root / ".env")
 
-from app.db.session import Base
-from app.models.user import User
-from app.models.event import Event
-from app.models.ticket import Ticket
 
 config = context.config
 if config.config_file_name is not None:
