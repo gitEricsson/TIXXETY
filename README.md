@@ -8,54 +8,104 @@ FastAPI-based ticketing API with clean architecture, async SQLAlchemy (PostgreSQ
 - Async SQLAlchemy 2.0, Alembic
 - PostgreSQL with PostGIS (geospatial)
 - Celery + Redis (broker + result backend)
-- Pytest
+- Pytest, httpx, pytest-asyncio
 - Docker Compose
 
 ## Features
 
 - Create and list events with venue (address + location)
 - Reserve and pay for tickets
+- **Fetch user ticket history**
 - Auto-expire unpaid tickets after 2 minutes via Celery
 - For-you feed: events near a user using geospatial query
 - Class-based clean architecture (controllers, services, repositories, schemas, models, routes, utils)
 - Logging, middleware, dependency injection, Singleton pattern for settings
 
-## Quickstart
+## Quickstart (Docker)
+
+This is the recommended way to run the application, as it sets up all services (API, PostgreSQL, Redis, Celery) automatically.
 
 ```bash
-# 1) Start stack
+# 1) Start the entire stack (API, DB, Redis, Celery)
 docker compose up --build -d
 
-# 2) Initialize DB and run migrations
+# 2) Initialize DB and run Alembic migrations
+# This will create all necessary tables in your PostgreSQL database.
 docker compose exec api alembic upgrade head
 
 # 3) API docs
-# Visit http://localhost:8000/docs
+# Once the services are up, visit http://localhost:8000/docs for the API documentation.
 ```
 
-## Local Dev (optional)
+## Local Development (optional)
 
-**Prerequisites:** Make sure PostgreSQL with PostGIS is running locally on port 5432, or update `SYNC_DATABASE_URL` in your environment.
+If you prefer to run the application directly on your machine:
+
+**Prerequisites:**
+- Python 3.9+
+- PostgreSQL with PostGIS extension enabled, running locally on port `5432`.
+- Redis server running locally on port `6379`.
+
+**Setup Steps:**
 
 ```bash
-python -m venv .venv && . .venv/bin/activate
+# 1) Create and activate a Python virtual environment
+python -m venv .venv
+. .venv/bin/activate # On Windows, use `.venv\Scripts\activate`
+
+# 2) Install dependencies
 pip install -r requirements.txt
-cp env.example .env  # Copy and edit .env with your settings
+
+# 3) Configure environment variables
+# Copy the example environment file and edit it.
+# IMPORTANT: Update SYNC_DATABASE_URL with your PostgreSQL password
+# and ensure other URLs point to your local services (localhost).
+cp env.example .env
+
+# 4) Run Alembic migrations
+# This will set up your local database schema.
 alembic upgrade head
+
+# 5) Run the FastAPI application
 uvicorn app.main:app --reload
+
+# 6) (Optional) To run the Celery worker for ticket expiration
+# Open a new terminal, activate your virtual environment, and run:
+celery -A app.celery_app worker -l info
 ```
 
 ## Tests
 
+### Unit Tests
+
+To run the unit tests (using `pytest` and `pytest-asyncio`):
+
 ```bash
+# From the project root
 pytest -q
 ```
 
+### End-to-End (E2E) Test Data Setup
+
+To prepare your local PostgreSQL database with sample data for E2E testing:
+
+**WARNING:** This script will **DROP ALL EXISTING TABLES AND DATA** in your configured database before reseeding. Only run this on a development database where data loss is acceptable.
+
+```bash
+# From the project root, with your virtual environment active
+python scripts/seed_db.py
+```
+After running this script, you can interact with your API endpoints (e.g., `/tickets/users/{user_id}`) to test the application with pre-populated data.
+
 ## Environment
 
-Copy `env.example` to `.env` and adjust for your setup. See `env.example` for all configuration options. Defaults wired for Docker network:
+Configuration is managed via environment variables. Copy `env.example` to `.env` and adjust settings as needed.
 
-- DB: `postgresql+psycopg://postgres:postgres@db:5432/tixxety` (Docker) or `localhost:5432` (local dev)
-- Redis: `redis://redis:6379/0`
+Key environment variables:
 
-**Note:** When running locally (outside Docker), migrations default to `localhost:5432`. Set `SYNC_DATABASE_URL` environment variable to override.
+-   `SYNC_DATABASE_URL`: Database connection string. Defaults to `postgresql+psycopg://postgres:postgres@localhost:5432/tixxety` if not set, but Docker compose uses `db:5432`. **Ensure you update this in `.env` with your correct PostgreSQL password.**
+-   `REDIS_URL`: Redis connection string for caching and task queue.
+-   `CELERY_BROKER_URL`: URL for the Celery message broker (Redis).
+-   `CELERY_RESULT_BACKEND`: URL for the Celery result backend (Redis).
+
+**Note on Docker vs. Local:** When running locally, ensure `SYNC_DATABASE_URL` and `REDIS_URL` point to `localhost`. When using Docker Compose, these automatically point to the service names (`db` and `redis`).
