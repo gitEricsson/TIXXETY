@@ -33,4 +33,4 @@ class EventRead(EventBase):
     id: int
     tickets_sold: int
 
-    	model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)
