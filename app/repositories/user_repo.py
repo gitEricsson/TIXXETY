@@ -19,4 +19,6 @@ class UserRepository:
 		user = User(name=name, email=email)
 		self.db.add(user)
 		await self.db.flush()
+		await self.db.commit()
+		await self.db.refresh(user)
 		return user

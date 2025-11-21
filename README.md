@@ -42,6 +42,7 @@ docker compose exec api alembic upgrade head
 If you prefer to run the application directly on your machine:
 
 **Prerequisites:**
+
 - Python 3.9+
 - PostgreSQL with PostGIS extension enabled, running locally on port `5432`.
 - Redis server running locally on port `6379`.
@@ -95,6 +96,7 @@ To prepare your local PostgreSQL database with sample data for E2E testing:
 # From the project root, with your virtual environment active
 python scripts/seed_db.py
 ```
+
 After running this script, you can interact with your API endpoints (e.g., `/tickets/users/{user_id}`) to test the application with pre-populated data.
 
 ## Environment
@@ -103,9 +105,28 @@ Configuration is managed via environment variables. Copy `env.example` to `.env`
 
 Key environment variables:
 
--   `SYNC_DATABASE_URL`: Database connection string. Defaults to `postgresql+psycopg://postgres:postgres@localhost:5432/tixxety` if not set, but Docker compose uses `db:5432`. **Ensure you update this in `.env` with your correct PostgreSQL password.**
--   `REDIS_URL`: Redis connection string for caching and task queue.
--   `CELERY_BROKER_URL`: URL for the Celery message broker (Redis).
--   `CELERY_RESULT_BACKEND`: URL for the Celery result backend (Redis).
+- `SYNC_DATABASE_URL`: Database connection string. Defaults to `postgresql+psycopg://postgres:postgres@localhost:5432/tixxety` if not set, but Docker compose uses `db:5432`. **Ensure you update this in `.env` with your correct PostgreSQL password.**
+- `REDIS_URL`: Redis connection string for caching and task queue.
+- `CELERY_BROKER_URL`: URL for the Celery message broker (Redis).
+- `CELERY_RESULT_BACKEND`: URL for the Celery result backend (Redis).
 
 **Note on Docker vs. Local:** When running locally, ensure `SYNC_DATABASE_URL` and `REDIS_URL` point to `localhost`. When using Docker Compose, these automatically point to the service names (`db` and `redis`).
+
+API addition
+
+- POST /users — register a user (accepts UserCreate, returns UserRead). Controllers/services/repositories follow DI: controllers depend on service interfaces; services depend on repository interfaces.
+
+Tests
+
+- Unit tests were updated to construct services with repository fakes (e.g. TicketService(tickets_repo, events_repo)). If you have custom tests that instantiated services with a DB/session, update them to pass repository fakes or use the dependency providers in tests.
+
+Seed script
+
+- scripts/seed_db.py now uses the async engine and creates events using proper start_time/end_time and PostGIS venue_location.
+
+Run tests
+
+- From project root on Windows:
+  .venv\Scripts\activate
+  pip install -r requirements.txt
+  pytest -q

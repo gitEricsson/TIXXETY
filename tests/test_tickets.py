@@ -44,28 +44,15 @@ class FakeTicketRepo:
         return [t for t in self._tickets.values() if t.user_id == user_id]
 
 
-class FakeDB:
-    async def commit(self):
-        return None
-
-    async def refresh(self, obj):
-        # Simulate a database setting created_at if it's not already set
-        if not hasattr(obj, "created_at"):
-            obj.created_at = datetime.now(timezone.utc)
-        return None
-
-
 @pytest.mark.asyncio
 async def test_reserve_and_pay_ticket_logic(monkeypatch):
     # Arrange fakes
     fake_event = SimpleNamespace(id=1, tickets_sold=0, total_tickets=1)
     events = FakeEventRepo(fake_event)
     tickets = FakeTicketRepo()
-    db = FakeDB()
 
-    service = TicketService(db)
-    service.events = events
-    service.tickets = tickets
+    # Construct service with repos (matches refactor)
+    service = TicketService(tickets, events)
 
     # Stub Celery delay to no-op
     monkeypatch.setattr(
@@ -86,10 +73,9 @@ async def test_reserve_and_pay_ticket_logic(monkeypatch):
 async def test_get_user_tickets():
     # Arrange fakes
     tickets = FakeTicketRepo()
-    db = FakeDB()
+    events = FakeEventRepo(None)
 
-    service = TicketService(db)
-    service.tickets = tickets
+    service = TicketService(tickets, events)
 
     # Create some sample tickets for user 1
     await tickets.create(user_id=1, event_id=101)

@@ -1,21 +1,21 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
 from app.schemas.events import EventCreate, EventRead
 from app.services.events import EventService
+from app.deps import get_event_service
 
 router = APIRouter()
 
 
 @router.post("/", response_model=EventRead)
 async def create_event(
-    payload: EventCreate, db: AsyncSession = Depends(get_db)
+    payload: EventCreate,
+    service: EventService = Depends(get_event_service),
 ) -> EventRead:
-    service = EventService(db)
     return await service.create_event(payload)
 
 
 @router.get("/", response_model=list[EventRead])
-async def list_events(db: AsyncSession = Depends(get_db)) -> list[EventRead]:
-    service = EventService(db)
+async def list_events(
+    service: EventService = Depends(get_event_service),
+) -> list[EventRead]:
     return await service.list_events()

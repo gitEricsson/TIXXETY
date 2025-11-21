@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
@@ -37,6 +37,8 @@ class EventRepository:
 		)
 		self.db.add(event)
 		await self.db.flush()
+		await self.db.commit()
+		await self.db.refresh(event)
 		return event
 
 	async def get(self, event_id: int) -> Event | None:
@@ -49,9 +51,9 @@ class EventRepository:
 			return
 		event.tickets_sold = (event.tickets_sold or 0) + inc
 		await self.db.flush()
+		await self.db.commit()
 
 	async def events_within_radius(self, lat: float, lng: float, radius_km: float = 25.0) -> list[Event]:
-		# Use ST_DWithin with geography to get events within radius in meters
 		meters = radius_km * 1000.0
 		q = (
 			select(Event)

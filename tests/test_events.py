@@ -43,28 +43,14 @@ class FakeTicketRepo:
         self._tickets[ticket_id].status = status
 
 
-class FakeDB:
-    async def commit(self):
-        return None
-
-    async def refresh(self, obj):
-        # Simulate a database setting created_at if it's not already set
-        if not hasattr(obj, "created_at"):
-            obj.created_at = datetime.now(timezone.utc)
-        return None
-
-
 @pytest.mark.asyncio
 async def test_sold_out_cannot_reserve(monkeypatch):
     # Event already sold out
     event = SimpleNamespace(id=1, tickets_sold=1, total_tickets=1)
     events = FakeEventRepo(event)
     tickets = FakeTicketRepo()
-    db = FakeDB()
 
-    service = TicketService(db)
-    service.events = events
-    service.tickets = tickets
+    service = TicketService(tickets, events)
 
     monkeypatch.setattr(
         "app.tasks.tickets.schedule_ticket_expiration.delay", lambda *a, **k: None
@@ -90,11 +76,8 @@ async def test_availability_updates_allow_re_reserve_after_expiration(monkeypatc
     event = SimpleNamespace(id=10, tickets_sold=0, total_tickets=1)
     events = FakeEventRepo(event)
     tickets = FakeTicketRepo()
-    db = FakeDB()
 
-    service = TicketService(db)
-    service.events = events
-    service.tickets = tickets
+    service = TicketService(tickets, events)
 
     monkeypatch.setattr(
         "app.tasks.tickets.schedule_ticket_expiration.delay", lambda *a, **k: None

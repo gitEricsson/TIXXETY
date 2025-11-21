@@ -1,20 +1,20 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
 
-from app.db.session import async_engine, Base, AsyncSessionLocal
+from app.db.session import engine, Base, AsyncSessionLocal
 from app.models.user import User
 from app.models.event import Event
 from app.models.ticket import Ticket
-from app.core.config import settings
 
 
 async def seed_db():
     print("Seeding database...")
 
-    # Drop all tables and recreate them
-    async with async_engine.begin() as conn:
+    # Drop all tables and recreate them (async engine)
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
@@ -26,30 +26,36 @@ async def seed_db():
         session.add_all([user1, user2, user3])
         await session.flush()  # Flush to get IDs
 
-        # Create events
+        # Create events with venue location (lon, lat)
         event1 = Event(
             title="Concert in the Park",
             description="A lovely evening of music.",
+            start_time=datetime.utcnow() + timedelta(days=7),
+            end_time=datetime.utcnow() + timedelta(days=7, hours=3),
             total_tickets=100,
             tickets_sold=0,
-            date=datetime.utcnow() + timedelta(days=7),
-            location="Central Park",
+            venue_address="Central Park",
+            venue_location=from_shape(Point(-73.97, 40.77), srid=4326),
         )
         event2 = Event(
-            title="Tech Conference 2024",
+            title="Tech Conference 2025",
             description="The latest in technology.",
+            start_time=datetime.utcnow() + timedelta(days=30),
+            end_time=datetime.utcnow() + timedelta(days=30, hours=8),
             total_tickets=50,
             tickets_sold=0,
-            date=datetime.utcnow() + timedelta(days=30),
-            location="Convention Center",
+            venue_address="Convention Center",
+            venue_location=from_shape(Point(-122.33, 47.60), srid=4326),
         )
         event3 = Event(
             title="Art Exhibition",
             description="Showcasing local artists.",
+            start_time=datetime.utcnow() + timedelta(days=15),
+            end_time=datetime.utcnow() + timedelta(days=15, hours=6),
             total_tickets=20,
             tickets_sold=0,
-            date=datetime.utcnow() + timedelta(days=15),
-            location="Art Gallery",
+            venue_address="Art Gallery",
+            venue_location=from_shape(Point(-0.12, 51.50), srid=4326),
         )
         session.add_all([event1, event2, event3])
         await session.flush()  # Flush to get IDs
@@ -63,8 +69,6 @@ async def seed_db():
         # User 2 tickets
         ticket2_1 = Ticket(user_id=user2.id, event_id=event1.id, status="paid")
         ticket2_2 = Ticket(user_id=user2.id, event_id=event3.id, status="reserved")
-
-        # User 3 no tickets (for testing empty history)
 
         session.add_all([ticket1_1, ticket1_2, ticket1_3, ticket2_1, ticket2_2])
 

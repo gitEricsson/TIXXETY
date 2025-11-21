@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.ticket import Ticket
 
@@ -15,6 +15,8 @@ class TicketRepository:
         t = Ticket(user_id=user_id, event_id=event_id, status="reserved")
         self.db.add(t)
         await self.db.flush()
+        await self.db.commit()
+        await self.db.refresh(t)
         return t
 
     async def set_status(self, ticket_id: int, status: str) -> None:
@@ -23,11 +25,10 @@ class TicketRepository:
             return
         ticket.status = status
         await self.db.flush()
+        await self.db.commit()
 
     async def reserved_unpaid_ticket_ids(self) -> list[int]:
-        res = await self.db.execute(
-            select(Ticket.id).where(Ticket.status == "reserved")
-        )
+        res = await self.db.execute(select(Ticket.id).where(Ticket.status == "reserved"))
         return [row[0] for row in res.all()]
 
     async def get_by_user_id(self, user_id: int) -> list[Ticket]:

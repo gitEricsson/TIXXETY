@@ -1,4 +1,3 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from typing import List
 from app.repositories.ticket_repo import TicketRepository
@@ -9,10 +8,9 @@ from app.tasks.tickets import schedule_ticket_expiration
 
 
 class TicketService:
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        self.tickets = TicketRepository(db)
-        self.events = EventRepository(db)
+    def __init__(self, tickets: TicketRepository, events: EventRepository) -> None:
+        self.tickets = tickets
+        self.events = events
 
     async def reserve_ticket(self, payload: TicketReserve) -> TicketRead:
         event = await self.events.get(payload.event_id)
@@ -25,8 +23,6 @@ class TicketService:
             user_id=payload.user_id, event_id=payload.event_id
         )
         await self.events.increment_tickets_sold(event.id, 1)
-        await self.db.commit()
-        await self.db.refresh(ticket)
 
         # schedule expiration after TTL seconds
         schedule_ticket_expiration.delay(
@@ -44,8 +40,7 @@ class TicketService:
             return TicketRead.model_validate(ticket)
 
         await self.tickets.set_status(ticket_id, "paid")
-        await self.db.commit()
-        await self.db.refresh(ticket)
+        ticket = await self.tickets.get(ticket_id)
         return TicketRead.model_validate(ticket)
 
     async def get_user_tickets(self, user_id: int) -> List[TicketRead]:
